@@ -1,0 +1,21 @@
+from cx_Freeze import setup, Executable
+import sys
+
+base = None
+executables = [Executable("Inn_FL_ver2.py", base=base)]
+add_to_path = True
+
+options = {
+    'build_exe': {
+        'includes': ['selenium', 'selenium.webdriver'],
+        'path': sys.path
+    }
+}
+
+setup(
+    name = "GetInn>",
+    version = "2.0",
+    description = 'GetPersonInn',
+    executables = executables,
+    options = options
+)
