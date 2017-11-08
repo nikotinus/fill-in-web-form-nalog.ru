@@ -1,0 +1,118 @@
+"""
+opens browser (chrome) and waitting 200 sec for user's input in form.
+User should fill in captcha.
+After capthcha is suscessfull, if INN is found - making screenshot of the result. Alter - waiting for user.
+Expected: browser closed or inn is reached.
+If there is Inn screenshot in the storage, opens url with bankrotes and cheking with this Inn.
+Making screenshot of the result and close browser window.
+"""
+
+import time
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+
+
+#browser (Chrome) opens in service mode: chromedriver.exe have to be in "C:/tmp/
+def init_driver():
+    driver = webdriver.Chrome('C:/tmp/chromedriver')
+    #driver = webdriver.Chrome()
+    driver.wait = WebDriverWait(driver, 5)
+    return driver
+
+#map for saving inputdata throw the form of persons
+def store_fl():
+    fields = {
+        "fam": "",
+        "nam": "",
+        "otch": "",
+        "bdate": "",
+        "bplace": "",
+        "docno": "",
+        "docdt": "",
+        "doctype": "",
+        "resultInn": ""
+    }
+    return fields
+
+#making screenshot and saving with name
+def screenshot(driver, name):
+    driver.save_screenshot(name)
+
+#findout INN of the person and returning map of data for this person
+def lookup_Inn(driver, url):
+    driver.get(url)
+    fields = store_fl()
+
+    #activate browser window
+    # for handle in driver.window_handles:
+    #     driver.switch_to.window(handle)
+    driver.switch_to.window(driver.window_handles[0])
+
+    #awaiting for result and storing data
+    try:
+        result = WebDriverWait(driver,200).until(EC.visibility_of_element_located((By.ID, "resultInn"))).text
+        for param in fields.keys():
+            value  = driver.find_element_by_id(param).get_attribute("value")
+            fields[param] = value
+            if param == "resultInn":
+                fields[param] = result
+        #name = fields["fam"] + "_" + fields["resultInn"] + ".png" #creating file in raw dir
+        name = "C:/tmp/"+fields["fam"] + "_" + fields["resultInn"] + ".png" #creating file in C:/tmp/dir
+        print(name)
+        screenshot(driver,name)
+        return fields
+    finally:
+        driver.quit()
+
+# fill in field with Inn
+def put_inn_(driver, id, Inn):
+    search = WebDriverWait(driver, 200).until(EC.visibility_of_element_located((By.ID, id)))
+    search.clear()
+    for letter in Inn:
+        time.sleep(0.01)
+        search.send_keys(letter)
+
+#checking if person is bankrot with Inn
+def lookup_bankrot(driver,url,Inn,name):
+
+    driver.get(url)
+
+    # activate browser window
+    #for handle in driver.window_handles:
+    #    driver.switch_to.window(handle)
+
+    #try:
+    #moving to the target page and filling in Inn
+    put_inn_(driver, "ctl00_DebtorSearch1_inputDebtor", Inn)
+    driver.find_element_by_id('ctl00_DebtorSearch1_ibDebtorSearch').click()
+    WebDriverWait(driver, 200).until(EC.visibility_of_element_located((By.ID, "ctl00_cphBody_rblDebtorType_1")))
+    driver.find_element_by_id('ctl00_cphBody_rblDebtorType_1').click()
+    put_inn_(driver, "ctl00_cphBody_PersonCode1_CodeTextBox", Inn)
+    time.sleep(0.05)
+    driver.find_element_by_id('ctl00_cphBody_btnSearch').click()
+
+    #making screenshot
+    #name = name + "_" + Inn + "_bankrot.png"
+    name = "C:/tmp/"+name + "_" + Inn + "_bankrot.png"#creating file in C:/tmp/dir
+    print(name)
+    screenshot(driver, name)
+
+    #activate browser window
+    #for handle in driver.window_handles:
+    #   driver.switch_to.window(handle)
+    #finally:
+    #    driver.quit()
+
+
+def _main():
+    driver = init_driver()
+    url = "https://service.nalog.ru/inn.do"
+    person_data = lookup_Inn(driver, url)
+    driver = init_driver()
+    url = "https://bankrot.fedresurs.ru"
+    lookup_bankrot(driver, url, person_data["resultInn"], person_data["fam"])
+
+if __name__ == "__main__":
+    _main()
